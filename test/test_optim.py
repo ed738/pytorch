@@ -21,7 +21,7 @@ from torch.optim.lr_scheduler import LambdaLR, MultiplicativeLR, SequentialLR, S
     EPOCH_DEPRECATION_WARNING
 from torch.optim.swa_utils import AveragedModel, SWALR, update_bn
 from torch.testing._internal.common_utils import TestCase, run_tests, TEST_WITH_UBSAN, load_tests, \
-    parametrize, instantiate_parametrized_tests
+    parametrize, instantiate_parametrized_tests, skip_if_rocm
 # load_tests from common_utils is used to automatically filter tests for
 # sharding on sandcastle. This line silences flake warnings
 load_tests = load_tests
@@ -855,15 +855,18 @@ class TestOptim(TestCase):
             with self.assertRaisesRegex(ValueError, "Invalid weight_decay value: -0.5"):
                 optimizer(None, lr=1e-2, weight_decay=-0.5)
 
+    @skip_if_rocm
     def test_rprop(self):
         for optimizer in [optim.Rprop, optim_mt.Rprop]:
             self._test_basic_cases(
-                lambda weight, bias: optimizer([weight, bias], lr=1e-3)
+                lambda weight, bias, maximize: optimizer([weight, bias], lr=1e-3, maximize=maximize),
+                constructor_accepts_maximize=True
             )
             self._test_basic_cases(
-                lambda weight, bias: optimizer(
+                lambda weight, bias, maximize: optimizer(
                     self._build_params_dict(weight, bias, lr=1e-2),
-                    lr=1e-3)
+                    lr=1e-3, maximize=maximize),
+                constructor_accepts_maximize=True
             )
             with self.assertRaisesRegex(ValueError, "Invalid eta values: 1.0, 0.5"):
                 optimizer(None, lr=1e-2, etas=(1.0, 0.5))
